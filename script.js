@@ -19,26 +19,33 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 // Load textures
-const snakeTexture = new THREE.TextureLoader().load('assets/CubeTexture - Copy.png');
-const foodTexture = new THREE.TextureLoader().load('assets/Snake Icon.png');
+const textureLoader = new THREE.TextureLoader();
+const snakeTexture = textureLoader.load('assets/CubeTexture.png');
+const foodTexture = textureLoader.load('assets/Square.bmp');
 
 // Add a background grid
 const gridHelper = new THREE.GridHelper(20, 20, 0x888888, 0x444444); // Grid size and divisions
 scene.add(gridHelper);
 
 // Snake setup
-const snakeGeometry = new THREE.BoxGeometry(1, 1, 1);
+const gridSize = 1; // Size of each grid square
+const snakeGeometry = new THREE.BoxGeometry(gridSize, gridSize, gridSize);
 const snakeMaterial = new THREE.MeshBasicMaterial({ map: snakeTexture });
 const snake = [];
 const initialSegment = new THREE.Mesh(snakeGeometry, snakeMaterial);
+initialSegment.position.set(0, 0.5, 0); // Align to grid
 scene.add(initialSegment);
 snake.push(initialSegment);
 
 // Food setup
-const foodGeometry = new THREE.BoxGeometry(1, 1, 1);
+const foodGeometry = new THREE.BoxGeometry(gridSize, gridSize, gridSize);
 const foodMaterial = new THREE.MeshBasicMaterial({ map: foodTexture });
 const food = new THREE.Mesh(foodGeometry, foodMaterial);
-food.position.set(Math.random() * 10 - 5, 0.5, Math.random() * 10 - 5);
+food.position.set(
+  Math.floor(Math.random() * 10 - 5) * gridSize, 
+  0.5, 
+  Math.floor(Math.random() * 10 - 5) * gridSize
+); // Align to grid
 scene.add(food);
 
 // HTML elements for score and timer
@@ -63,33 +70,38 @@ timerElement.innerHTML = `Time: 0s`;
 document.body.appendChild(timerElement);
 
 // Game variables
-let direction = { x: 1, z: 0 }; // Adjust direction for top-down (x, z plane)
-let snakeSpeed = 0.1;
-let lastUpdateTime = 0;
+let direction = { x: gridSize, z: 0 }; // Adjust direction for top-down (x, z plane)
+let snakeSpeed = 200; // Snake moves every 200 ms
 let score = 0;
 let startTime = Date.now();
+let lastMoveTime = 0;
 
 // Movement control
 document.addEventListener('keydown', (event) => {
   switch (event.key) {
     case 'ArrowUp':
-      if (direction.z === 0) direction = { x: 0, z: -1 };
+      if (direction.z === 0) direction = { x: 0, z: -gridSize };
       break;
     case 'ArrowDown':
-      if (direction.z === 0) direction = { x: 0, z: 1 };
+      if (direction.z === 0) direction = { x: 0, z: gridSize };
       break;
     case 'ArrowLeft':
-      if (direction.x === 0) direction = { x: -1, z: 0 };
+      if (direction.x === 0) direction = { x: -gridSize, z: 0 };
       break;
     case 'ArrowRight':
-      if (direction.x === 0) direction = { x: 1, z: 0 };
+      if (direction.x === 0) direction = { x: gridSize, z: 0 };
       break;
   }
 });
 
 // Update snake position
-function updateSnake(deltaTime) {
+function updateSnake() {
   const head = snake[0];
+  const newHeadPosition = new THREE.Vector3(
+    head.position.x + direction.x,
+    head.position.y,
+    head.position.z + direction.z
+  );
 
   // Move snake segments
   for (let i = snake.length - 1; i > 0; i--) {
@@ -97,8 +109,7 @@ function updateSnake(deltaTime) {
   }
 
   // Update head position
-  head.position.x += direction.x * snakeSpeed * deltaTime;
-  head.position.z += direction.z * snakeSpeed * deltaTime;
+  head.position.copy(newHeadPosition);
 }
 
 // Check for collision with food
@@ -112,7 +123,11 @@ function checkCollision() {
     scene.add(newSegment);
 
     // Reposition food
-    food.position.set(Math.random() * 10 - 5, 0.5, Math.random() * 10 - 5);
+    food.position.set(
+      Math.floor(Math.random() * 10 - 5) * gridSize, 
+      0.5, 
+      Math.floor(Math.random() * 10 - 5) * gridSize
+    );
 
     // Update score
     score += 10;
@@ -128,14 +143,13 @@ function updateTimer() {
 
 // Game loop
 function animate(time) {
-  const deltaTime = time - lastUpdateTime;
-  if (deltaTime > 100) {
-    updateSnake(deltaTime);
+  if (time - lastMoveTime > snakeSpeed) {
+    updateSnake();
     checkCollision();
-    updateTimer();
-    lastUpdateTime = time;
+    lastMoveTime = time;
   }
 
+  updateTimer();
   renderer.render(scene, camera);
   requestAnimationFrame(animate);
 }
