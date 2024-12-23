@@ -1,6 +1,0 @@
-[build]
-base_image = "node:16-alpine"
-cmd = "npm install && npm run build"
-
-[start]
-cmd = "npm run preview"
