@@ -2,7 +2,7 @@ import './style.css';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
-import Stats from 'stats.js'
+//import * as stats from "stats";
 
 const scene = new THREE.Scene();
 
@@ -29,10 +29,10 @@ pointLight.position.set(5,5,5);
 const ambientLight = new THREE.AmbientLight(0xffffff);
 scene.add(pointLight,ambientLight);
 function addcube(colorz) {
-  const texture = new THREE.TextureLoader().load( 'CubeTexture - Copy.png' );
-  var geometry = new THREE.BoxGeometry( 10, 10, 10 );
-  var material = new THREE.MeshBasicMaterial( { color: colorz } );
-  var cube = new THREE.Mesh( geometry, material );
+  const texture = new THREE.TextureLoader().load( 'Square.bmp' );
+  var geometry = new THREE.BoxGeometry( 5, 5, 5 );
+  var material = new THREE.MeshBasicMaterial( { color: colorz, map: texture } );
+  var cube = new THREE.Mesh( geometry, material);
   return cube;
   
 }
@@ -79,8 +79,8 @@ var b = new THREE.Vector3( );
 //Movement
 
 //speed of movement
-var speedPostive = 1;
-var speedNegative = -1;
+var speedPostive = 5;
+var speedNegative = -5;
 var up = false;
 var down = false;
 var left = false;
@@ -131,9 +131,13 @@ function clearScene() {
       scene.remove( to_remove[i] );
   }
 }
+var movementTimer = 0;
+var movementtime = 5;
 
 function movementcube(){
-
+  movementTimer += 1
+  if(movementTimer == movementtime){
+    movementTimer = 0;
 
     if(up  ){
       Head.translateZ(speedPostive);
@@ -152,20 +156,19 @@ function movementcube(){
       
     }
     followSnake();
-
+  }
 }
-var movementTimer = 0;
-var movementtime = 1;
+
 
 function followSnake(){
-  movementTimer = movementTimer + 1;
+  //movementTimer = movementTimer + 1;
   
-  if (movementTimer == movementtime){
+  
     console.log(movementTimer);
     snake[0].position.x = Head.position.x;
     snake[0].position.z = Head.position.z;
-    movementTimer = 0;
-  }
+    
+  
   for(let i = snake.length - 1; i >= 1; i--){
     
     if (i > 0){
@@ -276,9 +279,9 @@ function foodController(){
   
 }
 //debug info
-var stats = new Stats();
-stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
-document.body.appendChild( stats.dom );
+//var stats = new Stats();
+//stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
+//document.body.appendChild( stats.dom );
 
 var highScore = 0;
 
@@ -319,7 +322,7 @@ displayHighScore();
 // animations
 function animete() {
 
-  stats.begin();
+  //stats.begin();
   displayScore();
   appleController()
   requestAnimationFrame(animete);
@@ -327,6 +330,6 @@ function animete() {
   failstate();
   movementcube();
   renderer.render(scene,camera);
-  stats.end();
+  //stats.end();
 }
 animete();
