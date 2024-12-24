@@ -1,26 +1,50 @@
+// Info Section Logic
+const infoSection = document.getElementById('infoSection');
+const infoButton = document.getElementById('infoButton');
+const closeInfoButton = document.getElementById('closeInfoButton');
+
+infoButton.addEventListener('click', () => {
+  infoSection.style.display = 'flex';
+});
+
+closeInfoButton.addEventListener('click', () => {
+  infoSection.style.display = 'none';
+});
+
+// Game Canvas Setup
+const canvas = document.getElementById('gameCanvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setSize(canvas.offsetWidth, canvas.offsetHeight);
+renderer.shadowMap.enabled = true;
+
+// Resize the canvas dynamically
+function resizeGame() {
+  const gameContainer = document.getElementById('gameContainer');
+  const size = Math.min(window.innerWidth, window.innerHeight) - 20;
+  gameContainer.style.width = `${size}px`;
+  gameContainer.style.height = `${size}px`;
+  renderer.setSize(size, size);
+}
+
+window.addEventListener('resize', resizeGame);
+resizeGame(); // Initial resize
+
 // Create the scene
 const scene = new THREE.Scene();
 
 // Set up the camera
 const camera = new THREE.OrthographicCamera(
-  -10, 10, 10, -10, 0.1, 100 // left, right, top, bottom, near, far
+  -10, 10, 10, -10, 0.1, 100
 );
-camera.position.set(0, 10, 0); // Place the camera above the scene
-camera.lookAt(0, 0, 0); // Look directly at the center of the scene
+camera.position.set(0, 10, 0);
+camera.lookAt(0, 0, 0);
 
-// Create the renderer
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
-document.body.appendChild(renderer.domElement);
-
-// Add lighting for depth
-const ambientLight = new THREE.AmbientLight(0x404040); // Soft ambient light
+// Add lighting
+const ambientLight = new THREE.AmbientLight(0x404040);
 scene.add(ambientLight);
 
 const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
 directionalLight.position.set(10, 10, 10);
-directionalLight.castShadow = true; // Enable shadows
 scene.add(directionalLight);
 
 // Load textures
@@ -29,80 +53,65 @@ const headTexture = textureLoader.load('assets/SnakeHead.png');
 const bodyTexture = textureLoader.load('assets/SnakeBody.png');
 const foodTexture = textureLoader.load('assets/Food.bmp');
 
-// Materials for head, body, and food
+// Materials
 const headMaterial = new THREE.MeshStandardMaterial({ map: headTexture });
 const bodyMaterial = new THREE.MeshStandardMaterial({ map: bodyTexture });
 const foodMaterial = new THREE.MeshStandardMaterial({ map: foodTexture });
 
-// Add a background grid
+// Grid
 const gridHelper = new THREE.GridHelper(20, 20, 0x888888, 0x444444);
 scene.add(gridHelper);
 
-// Snake and game setup
-const gridSize = 1; // Size of each grid square
-const gridBoundary = 10; // Boundary limit based on grid size
+// Game variables
+const gridSize = 1;
+const gridBoundary = 10;
 const snakeGeometry = new THREE.BoxGeometry(gridSize, gridSize, gridSize);
 const foodGeometry = new THREE.BoxGeometry(gridSize, gridSize, gridSize);
 const food = new THREE.Mesh(foodGeometry, foodMaterial);
 scene.add(food);
 
-const snake = []; // Array to hold the snake segments
-let direction = { x: gridSize, z: 0 }; // Initial movement direction
-let snakeSpeed = 200; // Snake moves every 200 ms
+const snake = [];
+let direction = { x: gridSize, z: 0 };
+let snakeSpeed = 200;
 let score = 0;
 let foodsEaten = 0;
 let startTime = Date.now();
 let lastMoveTime = 0;
 let isGameOver = false;
-let gameMode = null; // 'classic' or 'modern'
+let gameMode = null;
 
-// High score logic for Classic and Modern modes
+// High scores
 let highScoreClassic = parseInt(localStorage.getItem('snakeHighScoreClassic')) || 0;
 let highScoreModern = parseInt(localStorage.getItem('snakeHighScoreModern')) || 0;
-let currentHighScore = 0; // Will hold the high score for the selected mode
+let currentHighScore = 0;
 
-// HTML elements for UI
+// UI Elements
 const scoreElement = document.createElement('div');
-scoreElement.style.position = 'absolute';
-scoreElement.style.top = '10px';
-scoreElement.style.left = '10px';
-scoreElement.style.color = 'white';
-scoreElement.style.fontSize = '20px';
+scoreElement.id = 'scoreElement';
+scoreElement.innerHTML = `Score: 0 | High Score: 0`;
 document.body.appendChild(scoreElement);
 
 const timerElement = document.createElement('div');
-timerElement.style.position = 'absolute';
-timerElement.style.top = '40px';
-timerElement.style.left = '10px';
-timerElement.style.color = 'white';
-timerElement.style.fontSize = '20px';
+timerElement.id = 'timerElement';
+timerElement.innerHTML = `Time: 0s`;
 document.body.appendChild(timerElement);
 
+// Game Over element
 const gameOverElement = document.createElement('div');
-gameOverElement.style.position = 'absolute';
-gameOverElement.style.top = '50%';
-gameOverElement.style.left = '50%';
-gameOverElement.style.transform = 'translate(-50%, -50%)';
-gameOverElement.style.color = 'white';
-gameOverElement.style.fontSize = '30px';
-gameOverElement.style.textAlign = 'center';
+gameOverElement.id = 'gameOverElement';
 gameOverElement.style.display = 'none';
 document.body.appendChild(gameOverElement);
 
 const restartButton = document.createElement('button');
+restartButton.id = 'restartButton';
 restartButton.innerText = 'Play Again';
-restartButton.style.position = 'absolute';
-restartButton.style.top = '60%';
-restartButton.style.left = '50%';
-restartButton.style.transform = 'translate(-50%, -50%)';
-restartButton.style.fontSize = '20px';
 restartButton.style.display = 'none';
-restartButton.addEventListener('click', () => location.reload()); // Reload the page to restart the game
+restartButton.addEventListener('click', () => location.reload());
 document.body.appendChild(restartButton);
 
 // Movement control
 document.addEventListener('keydown', (event) => {
-  if (isGameOver) return; // Disable controls after game over
+  if (isGameOver) return;
   switch (event.key) {
     case 'ArrowUp': if (direction.z === 0) direction = { x: 0, z: -gridSize }; break;
     case 'ArrowDown': if (direction.z === 0) direction = { x: 0, z: gridSize }; break;
@@ -117,7 +126,6 @@ function setupSnake() {
     const segment = snake.pop();
     scene.remove(segment);
   }
-
   const headSegment = new THREE.Mesh(snakeGeometry, headMaterial);
   headSegment.position.set(0, 0.5, 0);
   snake.push(headSegment);
@@ -297,7 +305,6 @@ function displayGameModeMenu() {
   document.body.appendChild(menu);
 }
 
-// Start the game
 function startGame() {
   loadHighScore();
   setupSnake();
@@ -305,5 +312,4 @@ function startGame() {
   animate();
 }
 
-// Display the game mode menu
 displayGameModeMenu();
