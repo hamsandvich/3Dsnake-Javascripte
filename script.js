@@ -48,7 +48,7 @@ const foodMaterial = new THREE.MeshStandardMaterial({ map: textureLoader.load('a
 const food = new THREE.Mesh(foodGeometry, foodMaterial);
 scene.add(food);
 
-// HTML elements for score, timer, and game over
+// HTML elements
 const scoreElement = document.createElement('div');
 scoreElement.style.position = 'absolute';
 scoreElement.style.top = '10px';
@@ -93,89 +93,58 @@ document.body.appendChild(restartButton);
 let direction = { x: gridSize, z: 0 }; // Initial movement direction
 let snakeSpeed = 200; // Snake moves every 200 ms
 let score = 0;
+let foodsEaten = 0;
 let startTime = Date.now();
 let lastMoveTime = 0;
 let isGameOver = false;
+let gameMode = null; // 'classic' or 'modern'
 
 // High score logic
 let highScore = parseInt(localStorage.getItem('snakeHighScore')) || 0;
 
-// Display initial score and high score
-scoreElement.innerHTML = `Score: ${score} | High Score: ${highScore}`;
+// Game Mode Selection
+function displayGameModeMenu() {
+  const menu = document.createElement('div');
+  menu.style.position = 'absolute';
+  menu.style.top = '50%';
+  menu.style.left = '50%';
+  menu.style.transform = 'translate(-50%, -50%)';
+  menu.style.textAlign = 'center';
+  menu.style.color = 'white';
+  menu.style.fontSize = '30px';
 
-// Movement control
-document.addEventListener('keydown', (event) => {
-  if (isGameOver) return; // Disable controls after game over
-  switch (event.key) {
-    case 'ArrowUp':
-      if (direction.z === 0) direction = { x: 0, z: -gridSize };
-      break;
-    case 'ArrowDown':
-      if (direction.z === 0) direction = { x: 0, z: gridSize };
-      break;
-    case 'ArrowLeft':
-      if (direction.x === 0) direction = { x: -gridSize, z: 0 };
-      break;
-    case 'ArrowRight':
-      if (direction.x === 0) direction = { x: gridSize, z: 0 };
-      break;
-  }
-});
+  const classicButton = document.createElement('button');
+  classicButton.innerText = 'Classic Mode';
+  classicButton.style.fontSize = '20px';
+  classicButton.style.margin = '10px';
+  classicButton.onclick = () => {
+    gameMode = 'classic';
+    menu.remove();
+    startGame();
+  };
 
-// Rotate the head of the snake
-function updateHeadRotation() {
-  const head = snake[0];
-  if (direction.x === gridSize && direction.z === 0) {
-    head.rotation.set(0, -Math.PI / 2, 0); // Facing left
-  } else if (direction.x === -gridSize && direction.z === 0) {
-    head.rotation.set(0, Math.PI / 2, 0); // Facing right
-  } else if (direction.z === gridSize && direction.x === 0) {
-    head.rotation.set(0, Math.PI, 0); // Facing down
-  } else if (direction.z === -gridSize && direction.x === 0) {
-    head.rotation.set(0, 0, 0); // Facing up
-  }
+  const modernButton = document.createElement('button');
+  modernButton.innerText = 'Modern Mode';
+  modernButton.style.fontSize = '20px';
+  modernButton.style.margin = '10px';
+  modernButton.onclick = () => {
+    gameMode = 'modern';
+    menu.remove();
+    startGame();
+  };
+
+  menu.appendChild(classicButton);
+  menu.appendChild(modernButton);
+  document.body.appendChild(menu);
 }
 
-// Add a new segment to the snake
-function addSnakeSegment() {
-  const newSegment = new THREE.Mesh(snakeGeometry, bodyMaterial);
-  newSegment.position.copy(snake[snake.length - 1].position); // Place at the tail
-  snake.push(newSegment);
-  scene.add(newSegment);
-}
-
-// Generate a new food position ensuring it doesn't overlap with the snake
-function generateFoodPosition() {
-  let newPosition;
-  do {
-    newPosition = new THREE.Vector3(
-      Math.floor(Math.random() * 10 - 5) * gridSize, 
-      0.5, 
-      Math.floor(Math.random() * 10 - 5) * gridSize
-    );
-  } while (snake.some(segment => segment.position.equals(newPosition)));
-  return newPosition;
-}
-
-// Place the food at a new position
-function repositionFood() {
-  const newFoodPosition = generateFoodPosition();
-  food.position.copy(newFoodPosition);
-}
-
-// End the game and update high score
-function endGame(message) {
-  isGameOver = true;
-
-  // Update high score
-  if (score > highScore) {
-    highScore = score;
-    localStorage.setItem('snakeHighScore', highScore); // Save to local storage
-  }
-
-  gameOverElement.innerHTML = `${message}<br>Final Score: ${score}<br>High Score: ${highScore}`;
-  gameOverElement.style.display = 'block';
-  restartButton.style.display = 'block';
+// Warp logic for modern mode
+function warpPosition(position) {
+  if (position.x >= gridBoundary) position.x = -gridBoundary + gridSize;
+  if (position.x < -gridBoundary) position.x = gridBoundary - gridSize;
+  if (position.z >= gridBoundary) position.z = -gridBoundary + gridSize;
+  if (position.z < -gridBoundary) position.z = gridBoundary - gridSize;
+  return position;
 }
 
 // Update snake position
@@ -187,13 +156,18 @@ function updateSnake() {
     head.position.z + direction.z
   );
 
-  // Check if snake goes off-screen
-  if (
-    Math.abs(newHeadPosition.x) >= gridBoundary ||
-    Math.abs(newHeadPosition.z) >= gridBoundary
-  ) {
-    endGame('Game Over! You went off-screen.');
-    return;
+  if (gameMode === 'classic') {
+    // Classic mode: Check if snake goes off-screen
+    if (
+      Math.abs(newHeadPosition.x) >= gridBoundary ||
+      Math.abs(newHeadPosition.z) >= gridBoundary
+    ) {
+      endGame('Game Over! You went off-screen.');
+      return;
+    }
+  } else if (gameMode === 'modern') {
+    // Modern mode: Warp to the opposite side of the screen
+    warpPosition(newHeadPosition);
   }
 
   // Check if snake runs into itself
@@ -211,9 +185,6 @@ function updateSnake() {
 
   // Update head position
   head.position.copy(newHeadPosition);
-
-  // Update head rotation
-  updateHeadRotation();
 }
 
 // Check for collision with food
@@ -222,40 +193,23 @@ function checkCollision() {
   if (head.position.distanceTo(food.position) < 0.5) {
     addSnakeSegment(); // Grow snake
     repositionFood(); // Move food
-    score += 10; // Update score
+    score += 10;
+    foodsEaten += 1;
+
+    if (gameMode === 'modern' && foodsEaten % 5 === 0) {
+      snakeSpeed = Math.max(50, snakeSpeed - 20); // Increase speed
+    }
+
     scoreElement.innerHTML = `Score: ${score} | High Score: ${highScore}`;
   }
 }
 
-// Update timer
-function updateTimer() {
-  const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
-  timerElement.innerHTML = `Time: ${elapsedTime}s`;
+// Start the game
+function startGame() {
+  setupSnake();
+  repositionFood();
+  animate();
 }
 
-// Game loop
-function animate(time) {
-  if (isGameOver) return; // Stop updating after game over
-  if (time - lastMoveTime > snakeSpeed) {
-    updateSnake();
-    checkCollision();
-    lastMoveTime = time;
-  }
-
-  updateTimer();
-  renderer.render(scene, camera);
-  requestAnimationFrame(animate);
-}
-
-// Initial setup of the snake
-function setupSnake() {
-  const headSegment = new THREE.Mesh(snakeGeometry, headMaterial);
-  headSegment.position.set(0, 0.5, 0); // Start at the center
-  snake.push(headSegment);
-  scene.add(headSegment);
-}
-
-// Initialize the game
-setupSnake();
-repositionFood();
-animate();
+// Display the game mode menu
+displayGameModeMenu();
