@@ -27,28 +27,39 @@ scene.add(directionalLight);
 const textureLoader = new THREE.TextureLoader();
 const headTexture = textureLoader.load('assets/SnakeHead.png');
 const bodyTexture = textureLoader.load('assets/SnakeBody.png');
+const foodTexture = textureLoader.load('assets/Food.bmp');
 
-// Materials for head and body
+// Materials for head, body, and food
 const headMaterial = new THREE.MeshStandardMaterial({ map: headTexture });
 const bodyMaterial = new THREE.MeshStandardMaterial({ map: bodyTexture });
+const foodMaterial = new THREE.MeshStandardMaterial({ map: foodTexture });
 
 // Add a background grid
 const gridHelper = new THREE.GridHelper(20, 20, 0x888888, 0x444444); // Grid size and divisions
 scene.add(gridHelper);
 
-// Snake setup
+// Snake and game setup
 const gridSize = 1; // Size of each grid square
 const gridBoundary = 10; // Boundary limit based on grid size
 const snakeGeometry = new THREE.BoxGeometry(gridSize, gridSize, gridSize);
-const snake = [];
-
-// Food setup
 const foodGeometry = new THREE.BoxGeometry(gridSize, gridSize, gridSize);
-const foodMaterial = new THREE.MeshStandardMaterial({ map: textureLoader.load('assets/Food.bmp') });
 const food = new THREE.Mesh(foodGeometry, foodMaterial);
 scene.add(food);
 
-// HTML elements
+const snake = []; // Array to hold the snake segments
+let direction = { x: gridSize, z: 0 }; // Initial movement direction
+let snakeSpeed = 200; // Snake moves every 200 ms
+let score = 0;
+let foodsEaten = 0;
+let startTime = Date.now();
+let lastMoveTime = 0;
+let isGameOver = false;
+let gameMode = null; // 'classic' or 'modern'
+
+// High score logic
+let highScore = parseInt(localStorage.getItem('snakeHighScore')) || 0;
+
+// HTML elements for UI
 const scoreElement = document.createElement('div');
 scoreElement.style.position = 'absolute';
 scoreElement.style.top = '10px';
@@ -84,25 +95,150 @@ restartButton.style.left = '50%';
 restartButton.style.transform = 'translate(-50%, -50%)';
 restartButton.style.fontSize = '20px';
 restartButton.style.display = 'none';
-restartButton.addEventListener('click', () => {
-  location.reload(); // Reload the page to restart the game
-});
+restartButton.addEventListener('click', () => location.reload()); // Reload the page to restart the game
 document.body.appendChild(restartButton);
 
-// Game variables
-let direction = { x: gridSize, z: 0 }; // Initial movement direction
-let snakeSpeed = 200; // Snake moves every 200 ms
-let score = 0;
-let foodsEaten = 0;
-let startTime = Date.now();
-let lastMoveTime = 0;
-let isGameOver = false;
-let gameMode = null; // 'classic' or 'modern'
+// Movement control
+document.addEventListener('keydown', (event) => {
+  if (isGameOver) return; // Disable controls after game over
+  switch (event.key) {
+    case 'ArrowUp': if (direction.z === 0) direction = { x: 0, z: -gridSize }; break;
+    case 'ArrowDown': if (direction.z === 0) direction = { x: 0, z: gridSize }; break;
+    case 'ArrowLeft': if (direction.x === 0) direction = { x: -gridSize, z: 0 }; break;
+    case 'ArrowRight': if (direction.x === 0) direction = { x: gridSize, z: 0 }; break;
+  }
+});
 
-// High score logic
-let highScore = parseInt(localStorage.getItem('snakeHighScore')) || 0;
+// Snake initialization
+function setupSnake() {
+  console.log('Initializing snake...');
+  while (snake.length > 0) {
+    const segment = snake.pop();
+    scene.remove(segment);
+  }
 
-// Game Mode Selection
+  const headSegment = new THREE.Mesh(snakeGeometry, headMaterial);
+  headSegment.position.set(0, 0.5, 0);
+  snake.push(headSegment);
+  scene.add(headSegment);
+  console.log('Snake initialized.');
+}
+
+// Food positioning
+function generateFoodPosition() {
+  let newPosition;
+  do {
+    newPosition = new THREE.Vector3(
+      Math.floor(Math.random() * 20 - 10) * gridSize,
+      0.5,
+      Math.floor(Math.random() * 20 - 10) * gridSize
+    );
+  } while (snake.some(segment => segment.position.equals(newPosition)));
+  return newPosition;
+}
+
+function repositionFood() {
+  const newFoodPosition = generateFoodPosition();
+  food.position.copy(newFoodPosition);
+}
+
+// Head rotation logic
+function updateHeadRotation() {
+  const head = snake[0];
+  if (direction.x === gridSize) head.rotation.set(0, Math.PI / 2, 0); // Right
+  else if (direction.x === -gridSize) head.rotation.set(0, -Math.PI / 2, 0); // Left
+  else if (direction.z === gridSize) head.rotation.set(0, Math.PI, 0); // Down
+  else if (direction.z === -gridSize) head.rotation.set(0, 0, 0); // Up
+}
+
+// Game logic
+function updateSnake() {
+  const head = snake[0];
+  const newHeadPosition = new THREE.Vector3(
+    head.position.x + direction.x,
+    head.position.y,
+    head.position.z + direction.z
+  );
+
+  if (gameMode === 'classic') {
+    if (Math.abs(newHeadPosition.x) >= gridBoundary || Math.abs(newHeadPosition.z) >= gridBoundary) {
+      endGame('Game Over! You went off-screen.');
+      return;
+    }
+  } else if (gameMode === 'modern') {
+    if (newHeadPosition.x >= gridBoundary) newHeadPosition.x = -gridBoundary + gridSize;
+    if (newHeadPosition.x < -gridBoundary) newHeadPosition.x = gridBoundary - gridSize;
+    if (newHeadPosition.z >= gridBoundary) newHeadPosition.z = -gridBoundary + gridSize;
+    if (newHeadPosition.z < -gridBoundary) newHeadPosition.z = gridBoundary - gridSize;
+  }
+
+  for (let i = 1; i < snake.length; i++) {
+    if (newHeadPosition.equals(snake[i].position)) {
+      endGame('Game Over! You ran into yourself.');
+      return;
+    }
+  }
+
+  for (let i = snake.length - 1; i > 0; i--) {
+    snake[i].position.copy(snake[i - 1].position);
+  }
+
+  head.position.copy(newHeadPosition);
+  updateHeadRotation();
+}
+
+// Collision detection
+function checkCollision() {
+  const head = snake[0];
+  if (head.position.distanceTo(food.position) < 0.5) {
+    addSnakeSegment();
+    repositionFood();
+    score += 10;
+    foodsEaten++;
+    if (gameMode === 'modern' && foodsEaten % 5 === 0) snakeSpeed = Math.max(50, snakeSpeed - 20);
+    scoreElement.innerHTML = `Score: ${score} | High Score: ${highScore}`;
+  }
+}
+
+function addSnakeSegment() {
+  const newSegment = new THREE.Mesh(snakeGeometry, bodyMaterial);
+  newSegment.position.copy(snake[snake.length - 1].position);
+  snake.push(newSegment);
+  scene.add(newSegment);
+}
+
+// Game over logic
+function endGame(message) {
+  isGameOver = true;
+  if (score > highScore) {
+    highScore = score;
+    localStorage.setItem('snakeHighScore', highScore);
+  }
+  gameOverElement.innerHTML = `${message}<br>Final Score: ${score}<br>High Score: ${highScore}`;
+  gameOverElement.style.display = 'block';
+  restartButton.style.display = 'block';
+}
+
+// Timer
+function updateTimer() {
+  const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+  timerElement.innerHTML = `Time: ${elapsedTime}s`;
+}
+
+// Game loop
+function animate(time) {
+  if (isGameOver) return;
+  if (time - lastMoveTime > snakeSpeed) {
+    updateSnake();
+    checkCollision();
+    lastMoveTime = time;
+  }
+  updateTimer();
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}
+
+// Game mode selection
 function displayGameModeMenu() {
   const menu = document.createElement('div');
   menu.style.position = 'absolute';
@@ -113,13 +249,18 @@ function displayGameModeMenu() {
   menu.style.color = 'white';
   menu.style.fontSize = '30px';
 
+  const title = document.createElement('div');
+  title.innerText = 'Select Game Mode';
+  title.style.marginBottom = '20px';
+  menu.appendChild(title);
+
   const classicButton = document.createElement('button');
   classicButton.innerText = 'Classic Mode';
   classicButton.style.fontSize = '20px';
   classicButton.style.margin = '10px';
   classicButton.onclick = () => {
     gameMode = 'classic';
-    menu.remove();
+    document.body.removeChild(menu);
     startGame();
   };
 
@@ -129,79 +270,13 @@ function displayGameModeMenu() {
   modernButton.style.margin = '10px';
   modernButton.onclick = () => {
     gameMode = 'modern';
-    menu.remove();
+    document.body.removeChild(menu);
     startGame();
   };
 
   menu.appendChild(classicButton);
   menu.appendChild(modernButton);
   document.body.appendChild(menu);
-}
-
-// Warp logic for modern mode
-function warpPosition(position) {
-  if (position.x >= gridBoundary) position.x = -gridBoundary + gridSize;
-  if (position.x < -gridBoundary) position.x = gridBoundary - gridSize;
-  if (position.z >= gridBoundary) position.z = -gridBoundary + gridSize;
-  if (position.z < -gridBoundary) position.z = gridBoundary - gridSize;
-  return position;
-}
-
-// Update snake position
-function updateSnake() {
-  const head = snake[0];
-  const newHeadPosition = new THREE.Vector3(
-    head.position.x + direction.x,
-    head.position.y,
-    head.position.z + direction.z
-  );
-
-  if (gameMode === 'classic') {
-    // Classic mode: Check if snake goes off-screen
-    if (
-      Math.abs(newHeadPosition.x) >= gridBoundary ||
-      Math.abs(newHeadPosition.z) >= gridBoundary
-    ) {
-      endGame('Game Over! You went off-screen.');
-      return;
-    }
-  } else if (gameMode === 'modern') {
-    // Modern mode: Warp to the opposite side of the screen
-    warpPosition(newHeadPosition);
-  }
-
-  // Check if snake runs into itself
-  for (let i = 1; i < snake.length; i++) {
-    if (newHeadPosition.equals(snake[i].position)) {
-      endGame('Game Over! You ran into yourself.');
-      return;
-    }
-  }
-
-  // Move snake segments
-  for (let i = snake.length - 1; i > 0; i--) {
-    snake[i].position.copy(snake[i - 1].position);
-  }
-
-  // Update head position
-  head.position.copy(newHeadPosition);
-}
-
-// Check for collision with food
-function checkCollision() {
-  const head = snake[0];
-  if (head.position.distanceTo(food.position) < 0.5) {
-    addSnakeSegment(); // Grow snake
-    repositionFood(); // Move food
-    score += 10;
-    foodsEaten += 1;
-
-    if (gameMode === 'modern' && foodsEaten % 5 === 0) {
-      snakeSpeed = Math.max(50, snakeSpeed - 20); // Increase speed
-    }
-
-    scoreElement.innerHTML = `Score: ${score} | High Score: ${highScore}`;
-  }
 }
 
 // Start the game
