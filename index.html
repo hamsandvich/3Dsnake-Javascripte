@@ -3,21 +3,35 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Snake.JS</title>
-  <link rel="icon" type="image/x-icon" href="/assets/Snake Icon.png">
-  
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-    }
-    canvas {
-      display: block;
-    }
-  </style>
+  <title>3D Snake Game</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+  <header>
+    <h1>3D Snake Game</h1>
+    <button id="infoButton">How to Play</button>
+  </header>
+  
+  <main>
+    <div id="gameContainer">
+      <canvas id="gameCanvas"></canvas>
+    </div>
+  </main>
+
+  <section id="infoSection">
+    <div class="infoContent">
+      <h2>Game Instructions</h2>
+      <p><strong>Controls:</strong> Use the arrow keys to move the snake.</p>
+      <p><strong>Game Rules:</strong></p>
+      <ul>
+        <li>Classic Mode: The game ends if the snake goes off-screen or hits itself.</li>
+        <li>Modern Mode: The snake warps to the opposite side if it goes off-screen. The speed increases every 5 foods collected.</li>
+      </ul>
+      <p><strong>Objective:</strong> Grow your snake as long as possible by eating food!</p>
+      <button id="closeInfoButton">Close</button>
+    </div>
+  </section>
+
   <script src="script.js"></script>
 </body>
 </html>

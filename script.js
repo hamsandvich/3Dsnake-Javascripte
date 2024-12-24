@@ -35,7 +35,7 @@ const bodyMaterial = new THREE.MeshStandardMaterial({ map: bodyTexture });
 const foodMaterial = new THREE.MeshStandardMaterial({ map: foodTexture });
 
 // Add a background grid
-const gridHelper = new THREE.GridHelper(20, 20, 0x888888, 0x444444); // Grid size and divisions
+const gridHelper = new THREE.GridHelper(20, 20, 0x888888, 0x444444);
 scene.add(gridHelper);
 
 // Snake and game setup
@@ -56,8 +56,10 @@ let lastMoveTime = 0;
 let isGameOver = false;
 let gameMode = null; // 'classic' or 'modern'
 
-// High score logic
-let highScore = parseInt(localStorage.getItem('snakeHighScore')) || 0;
+// High score logic for Classic and Modern modes
+let highScoreClassic = parseInt(localStorage.getItem('snakeHighScoreClassic')) || 0;
+let highScoreModern = parseInt(localStorage.getItem('snakeHighScoreModern')) || 0;
+let currentHighScore = 0; // Will hold the high score for the selected mode
 
 // HTML elements for UI
 const scoreElement = document.createElement('div');
@@ -111,7 +113,6 @@ document.addEventListener('keydown', (event) => {
 
 // Snake initialization
 function setupSnake() {
-  console.log('Initializing snake...');
   while (snake.length > 0) {
     const segment = snake.pop();
     scene.remove(segment);
@@ -121,7 +122,6 @@ function setupSnake() {
   headSegment.position.set(0, 0.5, 0);
   snake.push(headSegment);
   scene.add(headSegment);
-  console.log('Snake initialized.');
 }
 
 // Food positioning
@@ -145,10 +145,31 @@ function repositionFood() {
 // Head rotation logic
 function updateHeadRotation() {
   const head = snake[0];
-  if (direction.x === gridSize) head.rotation.set(0, Math.PI / 2, 0); // Right
-  else if (direction.x === -gridSize) head.rotation.set(0, -Math.PI / 2, 0); // Left
-  else if (direction.z === gridSize) head.rotation.set(0, Math.PI, 0); // Down
-  else if (direction.z === -gridSize) head.rotation.set(0, 0, 0); // Up
+  if (direction.x === gridSize) head.rotation.set(0, Math.PI / 2, 0);
+  else if (direction.x === -gridSize) head.rotation.set(0, -Math.PI / 2, 0);
+  else if (direction.z === gridSize) head.rotation.set(0, Math.PI, 0);
+  else if (direction.z === -gridSize) head.rotation.set(0, 0, 0);
+}
+
+// High score handling
+function loadHighScore() {
+  if (gameMode === 'classic') currentHighScore = highScoreClassic;
+  else if (gameMode === 'modern') currentHighScore = highScoreModern;
+  scoreElement.innerHTML = `Score: ${score} | High Score: ${currentHighScore}`;
+}
+
+function saveHighScore() {
+  if (gameMode === 'classic') {
+    if (score > highScoreClassic) {
+      highScoreClassic = score;
+      localStorage.setItem('snakeHighScoreClassic', highScoreClassic);
+    }
+  } else if (gameMode === 'modern') {
+    if (score > highScoreModern) {
+      highScoreModern = score;
+      localStorage.setItem('snakeHighScoreModern', highScoreModern);
+    }
+  }
 }
 
 // Game logic
@@ -196,7 +217,7 @@ function checkCollision() {
     score += 10;
     foodsEaten++;
     if (gameMode === 'modern' && foodsEaten % 5 === 0) snakeSpeed = Math.max(50, snakeSpeed - 20);
-    scoreElement.innerHTML = `Score: ${score} | High Score: ${highScore}`;
+    scoreElement.innerHTML = `Score: ${score} | High Score: ${currentHighScore}`;
   }
 }
 
@@ -210,11 +231,8 @@ function addSnakeSegment() {
 // Game over logic
 function endGame(message) {
   isGameOver = true;
-  if (score > highScore) {
-    highScore = score;
-    localStorage.setItem('snakeHighScore', highScore);
-  }
-  gameOverElement.innerHTML = `${message}<br>Final Score: ${score}<br>High Score: ${highScore}`;
+  saveHighScore();
+  gameOverElement.innerHTML = `${message}<br>Final Score: ${score}<br>High Score: ${currentHighScore}`;
   gameOverElement.style.display = 'block';
   restartButton.style.display = 'block';
 }
@@ -281,6 +299,7 @@ function displayGameModeMenu() {
 
 // Start the game
 function startGame() {
+  loadHighScore();
   setupSnake();
   repositionFood();
   animate();
