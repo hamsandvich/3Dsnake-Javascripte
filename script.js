@@ -3,12 +3,7 @@ const scene = new THREE.Scene();
 
 // Set up the camera
 const camera = new THREE.OrthographicCamera(
-  -10, // left
-  10,  // right
-  10,  // top
-  -10, // bottom
-  0.1, // near
-  100  // far
+  -10, 10, 10, -10, 0.1, 100 // left, right, top, bottom, near, far
 );
 camera.position.set(0, 10, 0); // Place the camera above the scene
 camera.lookAt(0, 0, 0); // Look directly at the center of the scene
@@ -30,8 +25,12 @@ scene.add(directionalLight);
 
 // Load textures
 const textureLoader = new THREE.TextureLoader();
-const snakeTexture = textureLoader.load('assets/CubeTexture.png');
-const foodTexture = textureLoader.load('assets/Square.bmp');
+const headTexture = textureLoader.load('assets/SnakeHead.png');
+const bodyTexture = textureLoader.load('assets/SnakeBody.png');
+
+// Materials for head and body
+const headMaterial = new THREE.MeshStandardMaterial({ map: headTexture });
+const bodyMaterial = new THREE.MeshStandardMaterial({ map: bodyTexture });
 
 // Add a background grid
 const gridHelper = new THREE.GridHelper(20, 20, 0x888888, 0x444444); // Grid size and divisions
@@ -41,22 +40,12 @@ scene.add(gridHelper);
 const gridSize = 1; // Size of each grid square
 const gridBoundary = 10; // Boundary limit based on grid size
 const snakeGeometry = new THREE.BoxGeometry(gridSize, gridSize, gridSize);
-const snakeMaterial = new THREE.MeshStandardMaterial({ map: snakeTexture });
 const snake = [];
-const initialSegment = new THREE.Mesh(snakeGeometry, snakeMaterial);
-initialSegment.position.set(0, 0.5, 0); // Align to grid
-scene.add(initialSegment);
-snake.push(initialSegment);
 
 // Food setup
 const foodGeometry = new THREE.BoxGeometry(gridSize, gridSize, gridSize);
-const foodMaterial = new THREE.MeshStandardMaterial({ map: foodTexture });
+const foodMaterial = new THREE.MeshStandardMaterial({ map: textureLoader.load('assets/Food.bmp') });
 const food = new THREE.Mesh(foodGeometry, foodMaterial);
-food.position.set(
-  Math.floor(Math.random() * 10 - 5) * gridSize, 
-  0.5, 
-  Math.floor(Math.random() * 10 - 5) * gridSize
-);
 scene.add(food);
 
 // HTML elements for score, timer, and game over
@@ -66,8 +55,6 @@ scoreElement.style.top = '10px';
 scoreElement.style.left = '10px';
 scoreElement.style.color = 'white';
 scoreElement.style.fontSize = '20px';
-scoreElement.style.fontFamily = 'Arial, sans-serif';
-scoreElement.innerHTML = `Score: 0`;
 document.body.appendChild(scoreElement);
 
 const timerElement = document.createElement('div');
@@ -76,8 +63,6 @@ timerElement.style.top = '40px';
 timerElement.style.left = '10px';
 timerElement.style.color = 'white';
 timerElement.style.fontSize = '20px';
-timerElement.style.fontFamily = 'Arial, sans-serif';
-timerElement.innerHTML = `Time: 0s`;
 document.body.appendChild(timerElement);
 
 const gameOverElement = document.createElement('div');
@@ -87,7 +72,6 @@ gameOverElement.style.left = '50%';
 gameOverElement.style.transform = 'translate(-50%, -50%)';
 gameOverElement.style.color = 'white';
 gameOverElement.style.fontSize = '30px';
-gameOverElement.style.fontFamily = 'Arial, sans-serif';
 gameOverElement.style.textAlign = 'center';
 gameOverElement.style.display = 'none';
 document.body.appendChild(gameOverElement);
@@ -106,12 +90,18 @@ restartButton.addEventListener('click', () => {
 document.body.appendChild(restartButton);
 
 // Game variables
-let direction = { x: gridSize, z: 0 }; // Adjust direction for top-down (x, z plane)
+let direction = { x: gridSize, z: 0 }; // Initial movement direction
 let snakeSpeed = 200; // Snake moves every 200 ms
 let score = 0;
 let startTime = Date.now();
 let lastMoveTime = 0;
 let isGameOver = false;
+
+// High score logic
+let highScore = parseInt(localStorage.getItem('snakeHighScore')) || 0;
+
+// Display initial score and high score
+scoreElement.innerHTML = `Score: ${score} | High Score: ${highScore}`;
 
 // Movement control
 document.addEventListener('keydown', (event) => {
@@ -132,10 +122,58 @@ document.addEventListener('keydown', (event) => {
   }
 });
 
-// End the game
+// Rotate the head of the snake
+function updateHeadRotation() {
+  const head = snake[0];
+  if (direction.x === gridSize && direction.z === 0) {
+    head.rotation.set(0, -Math.PI / 2, 0); // Facing left
+  } else if (direction.x === -gridSize && direction.z === 0) {
+    head.rotation.set(0, Math.PI / 2, 0); // Facing right
+  } else if (direction.z === gridSize && direction.x === 0) {
+    head.rotation.set(0, Math.PI, 0); // Facing down
+  } else if (direction.z === -gridSize && direction.x === 0) {
+    head.rotation.set(0, 0, 0); // Facing up
+  }
+}
+
+// Add a new segment to the snake
+function addSnakeSegment() {
+  const newSegment = new THREE.Mesh(snakeGeometry, bodyMaterial);
+  newSegment.position.copy(snake[snake.length - 1].position); // Place at the tail
+  snake.push(newSegment);
+  scene.add(newSegment);
+}
+
+// Generate a new food position ensuring it doesn't overlap with the snake
+function generateFoodPosition() {
+  let newPosition;
+  do {
+    newPosition = new THREE.Vector3(
+      Math.floor(Math.random() * 10 - 5) * gridSize, 
+      0.5, 
+      Math.floor(Math.random() * 10 - 5) * gridSize
+    );
+  } while (snake.some(segment => segment.position.equals(newPosition)));
+  return newPosition;
+}
+
+// Place the food at a new position
+function repositionFood() {
+  const newFoodPosition = generateFoodPosition();
+  food.position.copy(newFoodPosition);
+}
+
+// End the game and update high score
 function endGame(message) {
   isGameOver = true;
-  gameOverElement.innerHTML = `${message}<br>Final Score: ${score}`;
+
+  // Update high score
+  if (score > highScore) {
+    highScore = score;
+    localStorage.setItem('snakeHighScore', highScore); // Save to local storage
+  }
+
+  gameOverElement.innerHTML = `${message}<br>Final Score: ${score}<br>High Score: ${highScore}`;
   gameOverElement.style.display = 'block';
   restartButton.style.display = 'block';
 }
@@ -173,28 +211,19 @@ function updateSnake() {
 
   // Update head position
   head.position.copy(newHeadPosition);
+
+  // Update head rotation
+  updateHeadRotation();
 }
 
 // Check for collision with food
 function checkCollision() {
   const head = snake[0];
   if (head.position.distanceTo(food.position) < 0.5) {
-    // Add a new segment to the snake
-    const newSegment = new THREE.Mesh(snakeGeometry, snakeMaterial);
-    newSegment.position.copy(snake[snake.length - 1].position);
-    snake.push(newSegment);
-    scene.add(newSegment);
-
-    // Reposition food
-    food.position.set(
-      Math.floor(Math.random() * 10 - 5) * gridSize, 
-      0.5, 
-      Math.floor(Math.random() * 10 - 5) * gridSize
-    );
-
-    // Update score
-    score += 10;
-    scoreElement.innerHTML = `Score: ${score}`;
+    addSnakeSegment(); // Grow snake
+    repositionFood(); // Move food
+    score += 10; // Update score
+    scoreElement.innerHTML = `Score: ${score} | High Score: ${highScore}`;
   }
 }
 
@@ -218,5 +247,15 @@ function animate(time) {
   requestAnimationFrame(animate);
 }
 
-// Start the game loop
+// Initial setup of the snake
+function setupSnake() {
+  const headSegment = new THREE.Mesh(snakeGeometry, headMaterial);
+  headSegment.position.set(0, 0.5, 0); // Start at the center
+  snake.push(headSegment);
+  scene.add(headSegment);
+}
+
+// Initialize the game
+setupSnake();
+repositionFood();
 animate();
