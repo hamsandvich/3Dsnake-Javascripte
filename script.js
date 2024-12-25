@@ -20,7 +20,7 @@ renderer.shadowMap.enabled = true;
 // Resize the canvas dynamically
 function resizeGame() {
   const gameContainer = document.getElementById('gameContainer');
-  const size = Math.min(window.innerWidth, window.innerHeight) - 20;
+  const size = Math.min(window.innerWidth, window.innerHeight) * 0.8; // Scale to 80% of the viewport
   gameContainer.style.width = `${size}px`;
   gameContainer.style.height = `${size}px`;
   renderer.setSize(size, size);
@@ -33,9 +33,7 @@ resizeGame(); // Initial resize
 const scene = new THREE.Scene();
 
 // Set up the camera
-const camera = new THREE.OrthographicCamera(
-  -10, 10, 10, -10, 0.1, 100
-);
+const camera = new THREE.OrthographicCamera(-10, 10, 10, -10, 0.1, 100);
 camera.position.set(0, 10, 0);
 camera.lookAt(0, 0, 0);
 
@@ -95,20 +93,42 @@ const timerElement = document.createElement('div');
 timerElement.id = 'timerElement';
 timerElement.innerHTML = `Time: 0s`;
 document.body.appendChild(timerElement);
+// Game Over container
+const gameOverContainer = document.createElement('div');
+gameOverContainer.id = 'gameOverContainer';
+gameOverContainer.style.display = 'none';
+gameOverContainer.style.position = 'absolute';
+gameOverContainer.style.top = '50%';
+gameOverContainer.style.left = '50%';
+gameOverContainer.style.transform = 'translate(-50%, -50%)';
+gameOverContainer.style.textAlign = 'center';
+gameOverContainer.style.color = 'white';
+gameOverContainer.style.fontSize = '24px';
+gameOverContainer.style.fontFamily = 'Arial, sans-serif';
+gameOverContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+gameOverContainer.style.padding = '20px';
+gameOverContainer.style.borderRadius = '10px';
+document.body.appendChild(gameOverContainer);
 
-// Game Over element
+// Game Over text
 const gameOverElement = document.createElement('div');
 gameOverElement.id = 'gameOverElement';
-gameOverElement.style.display = 'none';
-document.body.appendChild(gameOverElement);
+gameOverContainer.appendChild(gameOverElement);
 
+// Restart button
 const restartButton = document.createElement('button');
 restartButton.id = 'restartButton';
 restartButton.innerText = 'Play Again';
-restartButton.style.display = 'none';
-restartButton.addEventListener('click', () => location.reload());
-document.body.appendChild(restartButton);
-
+restartButton.style.marginTop = '15px';
+restartButton.style.padding = '10px 20px';
+restartButton.style.fontSize = '18px';
+restartButton.style.color = '#fff';
+restartButton.style.backgroundColor = '#ff9f1c';
+restartButton.style.border = 'none';
+restartButton.style.borderRadius = '8px';
+restartButton.style.cursor = 'pointer';
+restartButton.addEventListener('click', () => location.reload()); // Reload the page to restart
+gameOverContainer.appendChild(restartButton);
 // Movement control
 document.addEventListener('keydown', (event) => {
   if (isGameOver) return;
@@ -236,15 +256,6 @@ function addSnakeSegment() {
   scene.add(newSegment);
 }
 
-// Game over logic
-function endGame(message) {
-  isGameOver = true;
-  saveHighScore();
-  gameOverElement.innerHTML = `${message}<br>Final Score: ${score}<br>High Score: ${currentHighScore}`;
-  gameOverElement.style.display = 'block';
-  restartButton.style.display = 'block';
-}
-
 // Timer
 function updateTimer() {
   const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
@@ -306,10 +317,27 @@ function displayGameModeMenu() {
 }
 
 function startGame() {
+  gameOverContainer.style.display = 'none'; // Hide game over screen
+  restartButton.style.display = 'none'; // Hide the restart button
   loadHighScore();
   setupSnake();
   repositionFood();
   animate();
+}
+
+function endGame(message) {
+  isGameOver = true;
+  saveHighScore();
+  gameOverElement.innerHTML = `
+    ${message}<br>
+    Final Score: ${score}<br>
+    High Score: ${currentHighScore}
+  `;
+  gameOverContainer.style.display = 'block'; // Show the game over screen
+  restartButton.style.display = 'block'; // Show the restart button
+  // Center the restart button
+  restartButton.style.display = 'block';
+  restartButton.style.margin = '0 auto';
 }
 
 displayGameModeMenu();

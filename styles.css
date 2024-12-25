@@ -1,99 +1,116 @@
-/* General body styles */
+/* Body */
 body {
     margin: 0;
     padding: 0;
-    font-family: Arial, sans-serif;
-    background-color: #1e1e2f; /* Restore background color */
+    background-color: #1a1a2e; /* Dark background */
     color: white;
+    font-family: Arial, sans-serif;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-start;
     height: 100vh;
-    box-sizing: border-box;
     overflow: hidden;
-  }
-  
-  /* Header styles */
-  header {
-    z-index: 10;
-    background-color: #1e1e2f;
+}
+
+/* Header */
+header {
     width: 100%;
     display: flex;
-    justify-content: space-between;
+    justify-content: space-between; /* Align title to the left and button to the right */
     align-items: center;
-    padding: 15px 20px; /* Add padding inside the header */
-    box-sizing: border-box;
+    background-color: #1a1a2e; /* Dark header background */
     color: white;
-    font-size: 18px;
-    border-bottom: 2px solid #ff9f1c;
+    font-size: 16px;
+    font-weight: bold;
+    padding: 10px 20px; /* Padding inside the header */
+    padding-left: 100px; /* Additional left padding */
+    border-bottom: 4px solid #ff9f1c; /* Thick orange border below the header */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); /* Subtle shadow for depth */
+}
+  
+  /* Header Title */
+  header #gameTitle {
+    font-size: 20px;
+    font-weight: bold;
+    margin: 0; /* Remove default margins */
   }
   
-  header h1 {
-    margin: 0;
-    font-size: 24px;
-  }
+
   
-  header button {
+/* How to Play Button */
+#infoButton {
     background-color: #ff9f1c;
     color: white;
     border: none;
     padding: 10px 15px;
-    border-radius: 5px;
     font-size: 16px;
-    cursor: pointer;
-  }
-  
-  header button:hover {
-    background-color: #ff6f1c;
-  }
-  
-  /* Score and timer elements */
-  #scoreElement, #timerElement {
-    position: fixed; /* Change from absolute to fixed */
-    top: 80px; /* Place below the header */
-    left: 20px; /* Align to the left */
-    color: white;
-    font-size: 18px;
-    font-family: Arial, sans-serif;
-    background-color: rgba(0, 0, 0, 0.7);
-    padding: 10px 15px;
     border-radius: 8px;
-    z-index: 10;
-    margin-bottom: 10px; /* Add spacing between elements */
-  }
+    cursor: pointer;
+    position: relative;
+    left: -60px; /* Move the button to the left by 100px */
+}
+
+#infoButton:hover {
+    background-color: #ff6f1c; /* Slightly darker on hover */
+}
   
-  /* Game container */
-  #gameContainer {
-    width: 800px;
-    height: 800px;
-    margin: 20px auto; /* Center the container with space around */
+/* Game container */
+#gameContainer {
+    border: 3px solid #ff9f1c; /* Orange border */
+    background-color: #000; /* Black background for the canvas */
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3); /* Subtle shadow */
+    margin: 40px auto; /* Lowered by 10px */
+    max-width: 90%; /* Ensure container doesn't exceed the screen width */
+    max-height: 90%; /* Ensure container doesn't exceed the screen height */
+    aspect-ratio: 1; /* Maintain square aspect ratio */
+    position: relative; /* For positioning internal elements */
     display: flex;
     justify-content: center;
     align-items: center;
-    border: 3px solid #ff9f1c;
-    background-color: #000;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3); /* Add shadow */
-  }
+    box-sizing: border-box; /* Include border in element's total width and height */
+}
   
-  /* Game Over text styles */
-  #gameOverElement {
+    /* Score and Timer */
+    #scoreElement,
+    #timerElement {
+    position: absolute;
+    top: 120px;
+    left: 20px;
+    font-size: 16px;
+    color: white;
+    background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent black */
+    padding: 5px 10px;
+    border-radius: 8px;
+    z-index: 1; /* Ensure it’s above the game container */
+    font-family: Arial, sans-serif;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); /* Add subtle shadow */
+    }
+
+    /* Timer specifically */
+    #timerElement {
+    top: 150px; /* Positioned slightly below the score */
+    }
+  
+  /* Game Over container */
+  #gameOverContainer {
+    display: none; /* Hidden by default */
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+    text-align: center;
     color: white;
     font-size: 24px;
     font-family: Arial, sans-serif;
-    background-color: rgba(0, 0, 0, 0.8);
+    background-color: rgba(0, 0, 0, 0.8); /* Slightly transparent black */
     padding: 20px;
     border-radius: 10px;
-    text-align: center;
-    z-index: 20;
+    z-index: 10; /* Ensure it's above the canvas */
+    line-height: 1.6; /* Improve line spacing */
   }
   
-  /* Restart button styles */
-  button#restartButton {
+  /* Restart button */
+  #restartButton {
     background-color: #ff9f1c;
     color: white;
     border: none;
@@ -101,65 +118,55 @@ body {
     font-size: 18px;
     border-radius: 8px;
     cursor: pointer;
-    margin-top: 15px;
+    margin-top: 20px; /* Add spacing below the text */
   }
   
-  button#restartButton:hover {
-    background-color: #ff6f1c;
+  #restartButton:hover {
+    background-color: #ff6f1c; /* Darker orange on hover */
   }
   
-/* Info Section (Modal) */
-#infoSection {
+  /* Info section */
+  #infoSection {
+    display: none;
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.8); /* Dimmed background */
-    display: none; /* Hidden by default */
-    justify-content: center;
-    align-items: center;
-    z-index: 100; /* Ensures the modal is on top of all other elements */
-  }
-  
-  /* Info Content */
-  .infoContent {
-    background-color: #1e1e2f;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #0f3460; /* Navy background */
+    color: white;
     padding: 20px;
     border-radius: 10px;
-    width: 90%;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+    z-index: 10; /* Ensure it's above other elements */
+    width: 80%;
     max-width: 500px;
     text-align: center;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5); /* Add shadow for depth */
   }
   
-  /* Info Content Headings */
-  .infoContent h2 {
-    margin-bottom: 15px;
+  #infoSection h2 {
     font-size: 24px;
-    color: #ff9f1c;
+    margin-bottom: 15px;
+    color: #ff9f1c; /* Accent color for the title */
   }
   
-  /* Info Content Paragraphs and Lists */
-  .infoContent p, .infoContent ul {
-    font-size: 16px;
-    line-height: 1.5;
-    margin-bottom: 10px;
+  #infoSection ul {
+    text-align: left;
+    line-height: 1.8;
+    padding: 0 10px;
   }
   
-  /* Close Button */
-  .infoContent button {
+  #infoSection button {
+    margin-top: 15px;
     background-color: #ff9f1c;
     color: white;
     border: none;
     padding: 10px 20px;
-    border-radius: 5px;
-    cursor: pointer;
     font-size: 16px;
-    margin-top: 20px;
+    border-radius: 8px;
+    cursor: pointer;
   }
   
-  .infoContent button:hover {
+  #infoSection button:hover {
     background-color: #ff6f1c;
   }
   
